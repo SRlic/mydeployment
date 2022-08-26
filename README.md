@@ -19,7 +19,7 @@ spec:
 The MyDeployment status includes running，scaling and updating。
 
 Points to note:
-1. When some pods are pending, the Deployment is also be scaling or updating. For example，if one pod fails to pull an image, the pod will keep on pending and retry every so often, the Deployment is always be scaling or updating this time. We can delete the pending pod directly, modifying the replica or the image in our deployment. 
+1. If one pod fails to pull an image, the pod will keep on pending and retry every so often, the Deployment is always be scaling or updating this time. We can delete the pending pod directly, modifying the replica or the image in our deployment. 
 2. Only support single image 
 3. We default that the pod will be deleted successfully
 
