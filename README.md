@@ -19,7 +19,8 @@ spec:
 The MyDeployment status includes running，scaling and updating。
 
 Points to note:
-1. When we scale up or update our deployment，the deployment may be blocked by some pending pods (the pods we want to pull up), our deployment will not  actively delete pending pods。If your deployment is keeping on scaling or updating，you can manually delete the pending pod，you can also modify the replica  or image to trigger the deletion of the pod. Pod deletion will delete pending pod firstly
+1. When we scale up or update our deployment，the deployment may be blocked by some pending pods (the pods we want to pull up), our deployment will not  actively delete pending pods. For example, if some pods failed to pull off the image, they will keep on pending and retry every once in a while. The deployment will be blocked by these ErrImagePull pods. 
+If your deployment is keeping on scaling or updating，you can manually delete the pending pod，you can also modify the replica  or image to trigger the deletion of the pod. Pod deletion will delete pending pod firstly
 2. Only support single image 
 3. We default that the pod will be deleted successfully
 
