@@ -1,0 +1,8 @@
+apiVersion: kubelearn.liyichen.kubebuilder.io/v1
+kind: MyDeployment
+metadata:
+  name: mydeployment-sample
+spec:
+   replica: 4
+   image: nginx
+  # TODO(user): Add fields here

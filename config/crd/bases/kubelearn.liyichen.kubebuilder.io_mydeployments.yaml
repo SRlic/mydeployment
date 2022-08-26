@@ -1,0 +1,182 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  creationTimestamp: null
+  name: mydeployments.kubelearn.liyichen.kubebuilder.io
+spec:
+  group: kubelearn.liyichen.kubebuilder.io
+  names:
+    kind: MyDeployment
+    listKind: MyDeploymentList
+    plural: mydeployments
+    singular: mydeployment
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: MyDeployment is the Schema for the mydeployments API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: MyDeploymentSpec defines the desired state of MyDeployment
+            properties:
+              image:
+                description: Container Image of pod, the num of container in one pod
+                  is limited to one in our design
+                type: string
+              replica:
+                description: Replica of pod
+                type: integer
+            type: object
+          status:
+            description: MyDeploymentStatus defines the observed state of MyDeployment
+            properties:
+              current_other_replica:
+                description: current other replica= OtherPod.RunningReplica + OtherPod.PendingReplica
+                type: integer
+              current_replica:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file current replica= Specpod.RunningReplica + Specpod.PendingReplica
+                  + OtherPod.RunningReplica + OtherPod.PendingReplica'
+                type: integer
+              current_spec_replica:
+                description: current spec replica= Specpod.RunningReplica + Specpod.PendingReplica
+                type: integer
+              other_pod:
+                properties:
+                  delete_pod:
+                    items:
+                      properties:
+                        deletiontimestamp:
+                          format: date-time
+                          type: string
+                        image:
+                          type: string
+                        name:
+                          type: string
+                        phase:
+                          description: PodPhase is a label for the condition of a
+                            pod at the current time.
+                          type: string
+                      type: object
+                    type: array
+                  delete_replica:
+                    type: integer
+                  pedding_replica:
+                    type: integer
+                  pending_pod:
+                    items:
+                      properties:
+                        deletiontimestamp:
+                          format: date-time
+                          type: string
+                        image:
+                          type: string
+                        name:
+                          type: string
+                        phase:
+                          description: PodPhase is a label for the condition of a
+                            pod at the current time.
+                          type: string
+                      type: object
+                    type: array
+                  running_pod:
+                    items:
+                      properties:
+                        deletiontimestamp:
+                          format: date-time
+                          type: string
+                        image:
+                          type: string
+                        name:
+                          type: string
+                        phase:
+                          description: PodPhase is a label for the condition of a
+                            pod at the current time.
+                          type: string
+                      type: object
+                    type: array
+                  running_replica:
+                    type: integer
+                type: object
+              phase:
+                type: string
+              spec_pod:
+                properties:
+                  delete_pod:
+                    items:
+                      properties:
+                        deletiontimestamp:
+                          format: date-time
+                          type: string
+                        image:
+                          type: string
+                        name:
+                          type: string
+                        phase:
+                          description: PodPhase is a label for the condition of a
+                            pod at the current time.
+                          type: string
+                      type: object
+                    type: array
+                  delete_replica:
+                    type: integer
+                  pedding_replica:
+                    type: integer
+                  pending_pod:
+                    items:
+                      properties:
+                        deletiontimestamp:
+                          format: date-time
+                          type: string
+                        image:
+                          type: string
+                        name:
+                          type: string
+                        phase:
+                          description: PodPhase is a label for the condition of a
+                            pod at the current time.
+                          type: string
+                      type: object
+                    type: array
+                  running_pod:
+                    items:
+                      properties:
+                        deletiontimestamp:
+                          format: date-time
+                          type: string
+                        image:
+                          type: string
+                        name:
+                          type: string
+                        phase:
+                          description: PodPhase is a label for the condition of a
+                            pod at the current time.
+                          type: string
+                      type: object
+                    type: array
+                  running_replica:
+                    type: integer
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

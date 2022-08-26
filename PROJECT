@@ -1,0 +1,16 @@
+domain: liyichen.kubebuilder.io
+layout:
+- go.kubebuilder.io/v3
+projectName: mydeployment
+repo: mydeployment
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: liyichen.kubebuilder.io
+  group: kubelearn
+  kind: MyDeployment
+  path: mydeployment/api/v1
+  version: v1
+version: "3"
