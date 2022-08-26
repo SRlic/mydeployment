@@ -19,14 +19,15 @@ spec:
 The MyDeployment status includes running，scaling and updating。
 
 Points to note:
-1. If one pod fails to pull an image, the pod will keep on pending and retry every so often, the Deployment is always be scaling or updating this time. We can delete the pending pod directly, modifying the replica or the image in our deployment. 
+1. When we scale up or update our deployment，the deployment may be blocked by some pending pods (the pods we want to pull up), our deployment will not  actively delete pending pods。If your deployment is keeping on scaling or updating，you can manually delete the pending pod，you can also modify the replica  or image to trigger the deletion of the pod. Pod deletion will delete pending pod firstly
 2. Only support single image 
 3. We default that the pod will be deleted successfully
 
 Todo list:
 
 1. Support multiple images
-2. ...
+2. More detailed MyDeployment status
+3. ...
 
 ## Getting Started
 You’ll need a Kubernetes cluster before starting，see more details about k8s at [kubernetes](https://kubernetes.io/).
