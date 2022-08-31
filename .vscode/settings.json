@@ -1,0 +1,6 @@
+{
+    "go.alternateTools": {
+    
+    },
+    "go.lintFlags": ["--disable=all", "--enable=errcheck"]
+}

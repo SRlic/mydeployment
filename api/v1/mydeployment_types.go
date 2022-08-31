@@ -22,6 +22,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	DeployScaling  string = "Scaling"
+	DepolyRuning   string = "Runing"
+	DepolyUpdating string = "Updating"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -45,20 +51,42 @@ type MyDeploymentStatus struct {
 	Phase          string `json:"phase,omitempty"`
 
 	//current spec replica= Specpod.RunningReplica + Specpod.PendingReplica
-	CurrentSpecReplica int           `json:"current_spec_replica,omitempty"`
-	SpecPod            DeployPodList `json:"spec_pod,omitempty"`
+	CurrentSpecReplica int            `json:"current_spec_replica,omitempty"`
+	SpecPod            *DeployPodList `json:"spec_pod,omitempty"`
 
 	//current other replica= OtherPod.RunningReplica + OtherPod.PendingReplica
-	CurrentOtherReplica int           `json:"current_other_replica,omitempty"`
-	OtherPod            DeployPodList `json:"other_pod,omitempty"`
+	CurrentOtherReplica int            `json:"current_other_replica,omitempty"`
+	OtherPod            *DeployPodList `json:"other_pod,omitempty"`
 }
 
-func (mds MyDeploymentStatus) String() string {
+// UpdateStatusPhase update the MyDeploymentStatus's phase
+func (s *MyDeploymentStatus) UpdateStatusPhase(spec *MyDeploymentSpec) {
+	if s.OtherPod.DeleteReplica > 0 {
+		s.Phase = DepolyUpdating
+		return
+	}
+
+	if s.CurrentOtherReplica == 0 {
+		if s.CurrentSpecReplica != spec.Replica {
+			s.Phase = DeployScaling
+		} else {
+			if s.SpecPod.DeleteReplica > 0 || s.SpecPod.PendingReplica > 0 {
+				s.Phase = DeployScaling
+			} else {
+				s.Phase = DepolyRuning
+			}
+		}
+	} else {
+		s.Phase = DepolyUpdating
+	}
+}
+
+func (s MyDeploymentStatus) String() string {
 	res := fmt.Sprintf("Spec pod: \r\n%v",
-		mds.SpecPod)
+		s.SpecPod)
 	res += "\r\n"
 	res += fmt.Sprintf("Other pod: \r\n%v",
-		mds.OtherPod)
+		s.OtherPod)
 	return res
 }
 

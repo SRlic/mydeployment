@@ -3,6 +3,6 @@ kind: MyDeployment
 metadata:
   name: mydeployment-sample
 spec:
-   replica: 4
-   image: nginx
+   replica: 5
+   image: tomcat
   # TODO(user): Add fields here
