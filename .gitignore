@@ -24,4 +24,5 @@ testbin/*
 *.swo
 *~
 
-__debug_bin
+# Vscode Generated files
+controllers/__debug_bin
