@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	DeployScaling  string = "Scaling"
-	DepolyRuning   string = "Runing"
-	DepolyUpdating string = "Updating"
+	DeployScaling   string = "Scaling"
+	DepolyRuning    string = "Runing"
+	DepolyUpgrating string = "Upgrading"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -47,46 +47,46 @@ type MyDeploymentStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	//current replica= Specpod.RunningReplica + Specpod.PendingReplica + OtherPod.RunningReplica + OtherPod.PendingReplica
-	CurrentReplica int    `json:"current_replica,omitempty"`
-	Phase          string `json:"phase,omitempty"`
+	AlivePodNum int    `json:"alive_pod_num,omitempty"`
+	Phase       string `json:"phase,omitempty"`
 
 	//current spec replica= Specpod.RunningReplica + Specpod.PendingReplica
-	CurrentSpecReplica int            `json:"current_spec_replica,omitempty"`
-	SpecPod            *DeployPodList `json:"spec_pod,omitempty"`
+	AliveSpecPodNum int            `json:"alive_spec_pod_num,omitempty"`
+	SpecPodList     *DeployPodList `json:"spec_pod_list,omitempty"`
 
 	//current other replica= OtherPod.RunningReplica + OtherPod.PendingReplica
-	CurrentOtherReplica int            `json:"current_other_replica,omitempty"`
-	OtherPod            *DeployPodList `json:"other_pod,omitempty"`
+	AliveExpiredPodNum int            `json:"alive_expired_pod_num,omitempty"`
+	ExpiredPodList     *DeployPodList `json:"expired_pod_list,omitempty"`
 }
 
 // UpdateStatusPhase update the MyDeploymentStatus's phase
 func (s *MyDeploymentStatus) UpdateStatusPhase(spec *MyDeploymentSpec) {
-	if s.OtherPod.DeleteReplica > 0 {
-		s.Phase = DepolyUpdating
+	if s.ExpiredPodList.DeletedPodNum > 0 {
+		s.Phase = DepolyUpgrating
 		return
 	}
 
-	if s.CurrentOtherReplica == 0 {
-		if s.CurrentSpecReplica != spec.Replica {
+	if s.AliveExpiredPodNum == 0 {
+		if s.AliveSpecPodNum != spec.Replica {
 			s.Phase = DeployScaling
 		} else {
-			if s.SpecPod.DeleteReplica > 0 || s.SpecPod.PendingReplica > 0 {
+			if s.SpecPodList.PendingPodNum > 0 || s.SpecPodList.DeletedPodNum > 0 {
 				s.Phase = DeployScaling
 			} else {
 				s.Phase = DepolyRuning
 			}
 		}
 	} else {
-		s.Phase = DepolyUpdating
+		s.Phase = DepolyUpgrating
 	}
 }
 
 func (s MyDeploymentStatus) String() string {
 	res := fmt.Sprintf("Spec pod: \r\n%v",
-		s.SpecPod)
+		s.SpecPodList)
 	res += "\r\n"
 	res += fmt.Sprintf("Other pod: \r\n%v",
-		s.OtherPod)
+		s.ExpiredPodList)
 	return res
 }
 

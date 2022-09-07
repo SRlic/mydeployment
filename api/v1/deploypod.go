@@ -36,30 +36,30 @@ func NewDeployPod(pod *corev1.Pod) *DeployPod {
 // DeployPodList records the DeployPod with the same image.
 // The pods are divided into running pod, pending pod and delete pod
 type DeployPodList struct {
-	RunningReplica int `json:"running_replica,omitempty"`
-	PendingReplica int `json:"pedding_replica,omitempty"`
-	DeleteReplica  int `json:"delete_replica,omitempty"`
+	RunningPodNum int `json:"running_pod_num,omitempty"`
+	PendingPodNum int `json:"pending_pod_num,omitempty"`
+	DeletedPodNum int `json:"deleted_pod_num,omitempty"`
 
-	RunningPod []*DeployPod `json:"running_pod,omitempty"`
+	RunningPodList []*DeployPod `json:"running_pod_list,omitempty"`
 
-	PendingPod []*DeployPod `json:"pending_pod,omitempty"`
+	PendingPodList []*DeployPod `json:"pending_pod_list,omitempty"`
 
-	DeletePod []*DeployPod `json:"delete_pod,omitempty"`
+	DeletedPodList []*DeployPod `json:"deleted_pod_list,omitempty"`
 }
 
 func (dpl DeployPodList) String() string {
-	res := fmt.Sprintf("RunningReplica %v, PendingReplica %v, DeleteReplica %v \r\n", dpl.RunningReplica, dpl.PendingReplica, dpl.DeleteReplica)
+	res := fmt.Sprintf("RunningPodNum %v, PendingPodNUm %v, DeletedPodNum %v \r\n", dpl.RunningPodNum, dpl.PendingPodNum, dpl.DeletedPodNum)
 	res += "Running pod: \r\n"
-	for i := range dpl.RunningPod {
-		res += fmt.Sprintf("{%v} \r\n", dpl.RunningPod[i])
+	for i := range dpl.RunningPodList {
+		res += fmt.Sprintf("{%v} \r\n", dpl.RunningPodList[i])
 	}
 	res += "Pending pod: \r\n"
-	for i := range dpl.PendingPod {
-		res += fmt.Sprintf("{%v} \r\n", dpl.PendingPod[i])
+	for i := range dpl.PendingPodList {
+		res += fmt.Sprintf("{%v} \r\n", dpl.PendingPodList[i])
 	}
 	res += "Delete pod: \r\n"
-	for i := range dpl.DeletePod {
-		res += fmt.Sprintf("{%v} \r\n", dpl.DeletePod[i])
+	for i := range dpl.DeletedPodList {
+		res += fmt.Sprintf("{%v} \r\n", dpl.DeletedPodList[i])
 	}
 	return res
 }

@@ -1,10 +1,13 @@
 package utils
 
 import (
+	"context"
 	"math/rand"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -47,4 +50,18 @@ func GetImageStrFromPod(pod *corev1.Pod) string {
 func ImageStrToArr(image string) []string {
 	vec := strings.Split(image, ";;")
 	return vec
+}
+
+func UpdateWithRetry(ctx context.Context, kClient client.Client,
+	object client.Object, mutate func()) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		err := kClient.Get(ctx, client.ObjectKeyFromObject(object), object)
+		if err != nil {
+			return err
+		}
+
+		mutate()
+
+		return kClient.Update(ctx, object)
+	})
 }
