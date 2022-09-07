@@ -117,7 +117,7 @@ func (r *MyDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, nil
 }
 
-// Convert StatusPodList into DeploymentStatus, get current deployemnt status phase and update the status subresource of current mydeployment
+// UpdateDeploymentStatus Convert StatusPodList into DeploymentStatus, get current deployemnt status phase and update the status subresource of current mydeployment
 func (r *MyDeploymentReconciler) UpdateDeploymentStatus(ctx context.Context, statusPodList *utils.StatusPodList, myDeployment *mydeployment.MyDeployment) error {
 	status := *statusPodList.ToDeploymentStatus()
 	logr.Info(fmt.Sprintf("myDeployment Status %v", status))
@@ -134,10 +134,6 @@ func (r *MyDeploymentReconciler) UpdateDeploymentStatus(ctx context.Context, sta
 		}
 	}
 
-	// err := r.Status().Update(ctx, myDeployment)
-	// if err != nil {
-	// 	return err
-	// }
 	return nil
 }
 
@@ -221,7 +217,7 @@ func (r *MyDeploymentReconciler) ScalePod(ctx context.Context, statusPodList *ut
 	return nil
 }
 
-// Batch Create Pod
+// BatchCreatePod Batch Create Pod
 func (r *MyDeploymentReconciler) BatchCreatePod(ctx context.Context, myDeployment *mydeployment.MyDeployment, size int) error {
 	logr.Info(fmt.Sprintf("create pod num: %v, image:%v", size, myDeployment.Spec.Image))
 	rand.Seed(time.Now().Unix())
@@ -260,7 +256,7 @@ func (r *MyDeploymentReconciler) BatchCreatePod(ctx context.Context, myDeploymen
 	return nil
 }
 
-// Delete pod from my pod list, pending pods will be deleted first
+// BatchDeletePod Delete pod from my pod list, pending pods will be deleted first
 func (r *MyDeploymentReconciler) BatchDeletePod(ctx context.Context, podList *utils.MyPodList, deleteNum int) error {
 	logr.Info(fmt.Sprintf("delete pod num: %v, ", deleteNum))
 	pendingNum := podList.PendingPodNum

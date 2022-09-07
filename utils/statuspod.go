@@ -96,7 +96,7 @@ type StatusPodList struct {
 	ExpiredPodList     *MyPodList `json:"other_pod,omitempty"`
 }
 
-// ToDeploymentStatus  StatusPodList to DeploymentStatus
+// ToDeploymentStatus convert StatusPodList to DeploymentStatus
 func (s *StatusPodList) ToDeploymentStatus() *mydeployment.MyDeploymentStatus {
 	return &mydeployment.MyDeploymentStatus{
 		AlivePodNum:        s.AlivePodNum,
@@ -107,6 +107,7 @@ func (s *StatusPodList) ToDeploymentStatus() *mydeployment.MyDeploymentStatus {
 	}
 }
 
+// NeedScale is used to determine whether we need scale current pod list. If alivePodNum != sepcReplica, we need scale the pod list.
 func (s *StatusPodList) NeedScale(specReplica int) bool {
 	if s.AlivePodNum == specReplica {
 		return false
@@ -114,6 +115,7 @@ func (s *StatusPodList) NeedScale(specReplica int) bool {
 	return true
 }
 
+// NeedUpgrade is used to determine whether we need upgrade current pod list.
 func (s *StatusPodList) NeedUpgrade() bool {
 	if s.AliveExpiredPodNum > 0 {
 		return true
@@ -121,6 +123,7 @@ func (s *StatusPodList) NeedUpgrade() bool {
 	return false
 }
 
+// SpecPodPending is used to determine whether we have the pending spec pods.
 func (s *StatusPodList) SpecPodPending() bool {
 	if s.SpecPodList.PendingPodNum > 0 {
 		return true
@@ -128,6 +131,7 @@ func (s *StatusPodList) SpecPodPending() bool {
 	return false
 }
 
+// ExpiredPodPending is used to determine whether we have the pending expired pods.
 func (s *StatusPodList) ExpiredPodPending() bool {
 	if s.ExpiredPodList.PendingPodNum > 0 {
 		return true

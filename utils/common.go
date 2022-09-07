@@ -19,7 +19,7 @@ const (
 	letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 )
 
-// Rander generate random string for pod name
+// RandStr generate random string for pod name
 func RandStr(n int) string {
 	b := make([]byte, n)
 	for i := range b {
@@ -52,6 +52,7 @@ func ImageStrToArr(image string) []string {
 	return vec
 }
 
+// UpdateWithRetry use RetryOnConflict make an update to a resource when other code making unrelated updates to the resource at the same time
 func UpdateWithRetry(ctx context.Context, kClient client.Client,
 	object client.Object, mutate func()) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
