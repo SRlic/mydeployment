@@ -27,3 +27,4 @@ testbin/*
 # Vscode Generated files
 controllers/__debug_bin
 .vsocde
+*.txt

@@ -28,6 +28,10 @@ func RandStr(n int) string {
 	return string(b)
 }
 
+func IsSpecPod(pod *corev1.Pod, image string) bool {
+	return GetImageStrFromPod(pod) == image
+}
+
 // GetImageStrFromPod get the image of pod
 func GetImageStrFromPod(pod *corev1.Pod) string {
 	var res string = ""
