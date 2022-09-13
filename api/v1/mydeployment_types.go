@@ -19,6 +19,7 @@ package v1
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,14 +29,34 @@ const (
 	DepolyUpgrating string = "Upgrading"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// SimplePod records simple information of the pod
+type SimplePod struct {
+	Name              string          `json:"name,omitempty"`
+	Image             string          `json:"image,omitempty"`
+	DeletionTimestamp *metav1.Time    `json:"deletiontimestamp,omitempty"`
+	Phase             corev1.PodPhase `json:"phase,omitempty"`
+}
+
+func (dp SimplePod) String() string {
+	return fmt.Sprintf("Name %v,Image %v, DeletionTimestamp %v, Phase %v ", dp.Name, dp.Image, dp.DeletionTimestamp, dp.Phase)
+}
+
+// NewSimplePod initialize a new SimplePod
+func NewSimplePod(pod *corev1.Pod) *SimplePod {
+	// There should be only one container in this pod
+	if pod == nil || len(pod.Spec.Containers) != 1 {
+		return &SimplePod{}
+	}
+	return &SimplePod{
+		Name:              pod.Name,
+		Image:             pod.Spec.Containers[0].Image,
+		DeletionTimestamp: pod.DeletionTimestamp,
+		Phase:             pod.Status.Phase,
+	}
+}
 
 // MyDeploymentSpec defines the desired state of MyDeployment
 type MyDeploymentSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	//Replica of pod
 	Replica int `json:"replica,omitempty"`
 	//Container Image of pod, the num of container in one pod is limited to one in our design
@@ -44,50 +65,14 @@ type MyDeploymentSpec struct {
 
 // MyDeploymentStatus defines the observed state of MyDeployment
 type MyDeploymentStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	//current replica= Specpod.RunningReplica + Specpod.PendingReplica + OtherPod.RunningReplica + OtherPod.PendingReplica
 	AlivePodNum int    `json:"alive_pod_num,omitempty"`
 	Phase       string `json:"phase,omitempty"`
 
-	//current spec replica= Specpod.RunningReplica + Specpod.PendingReplica
-	AliveSpecPodNum int            `json:"alive_spec_pod_num,omitempty"`
-	SpecPodList     *DeployPodList `json:"spec_pod_list,omitempty"`
-
-	//current other replica= OtherPod.RunningReplica + OtherPod.PendingReplica
-	AliveExpiredPodNum int            `json:"alive_expired_pod_num,omitempty"`
-	ExpiredPodList     *DeployPodList `json:"expired_pod_list,omitempty"`
-}
-
-// UpdateStatusPhase update the MyDeploymentStatus's phase
-func (s *MyDeploymentStatus) UpdateStatusPhase(spec *MyDeploymentSpec) {
-	if s.ExpiredPodList.DeletedPodNum > 0 {
-		s.Phase = DepolyUpgrating
-		return
-	}
-
-	if s.AliveExpiredPodNum == 0 {
-		if s.AliveSpecPodNum != spec.Replica {
-			s.Phase = DeployScaling
-		} else {
-			if s.SpecPodList.PendingPodNum > 0 || s.SpecPodList.DeletedPodNum > 0 {
-				s.Phase = DeployScaling
-			} else {
-				s.Phase = DepolyRuning
-			}
-		}
-	} else {
-		s.Phase = DepolyUpgrating
-	}
+	PodList []*SimplePod `json:"pod_list,omitempty"`
 }
 
 func (s MyDeploymentStatus) String() string {
-	res := fmt.Sprintf("Spec pod: \r\n%v",
-		s.SpecPodList)
-	res += "\r\n"
-	res += fmt.Sprintf("Other pod: \r\n%v",
-		s.ExpiredPodList)
-	return res
+	return fmt.Sprintf("alive pod num: %v, phase: %v, podList: %v", s.AlivePodNum, s.Phase, s.PodList)
 }
 
 //+kubebuilder:object:root=true

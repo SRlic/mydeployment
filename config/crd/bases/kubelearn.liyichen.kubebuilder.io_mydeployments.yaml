@@ -46,150 +46,27 @@ spec:
           status:
             description: MyDeploymentStatus defines the observed state of MyDeployment
             properties:
-              alive_expired_pod_num:
-                description: current other replica= OtherPod.RunningReplica + OtherPod.PendingReplica
-                type: integer
               alive_pod_num:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file current replica= Specpod.RunningReplica + Specpod.PendingReplica
-                  + OtherPod.RunningReplica + OtherPod.PendingReplica'
                 type: integer
-              alive_spec_pod_num:
-                description: current spec replica= Specpod.RunningReplica + Specpod.PendingReplica
-                type: integer
-              expired_pod_list:
-                description: DeployPodList records the DeployPod with the same image.
-                  The pods are divided into running pod, pending pod and delete pod
-                properties:
-                  deleted_pod_list:
-                    items:
-                      description: DeployPod records necessary metadata of the pod
-                        owned by Deployment
-                      properties:
-                        deletiontimestamp:
-                          format: date-time
-                          type: string
-                        image:
-                          type: string
-                        name:
-                          type: string
-                        phase:
-                          description: PodPhase is a label for the condition of a
-                            pod at the current time.
-                          type: string
-                      type: object
-                    type: array
-                  deleted_pod_num:
-                    type: integer
-                  pending_pod_list:
-                    items:
-                      description: DeployPod records necessary metadata of the pod
-                        owned by Deployment
-                      properties:
-                        deletiontimestamp:
-                          format: date-time
-                          type: string
-                        image:
-                          type: string
-                        name:
-                          type: string
-                        phase:
-                          description: PodPhase is a label for the condition of a
-                            pod at the current time.
-                          type: string
-                      type: object
-                    type: array
-                  pending_pod_num:
-                    type: integer
-                  running_pod_list:
-                    items:
-                      description: DeployPod records necessary metadata of the pod
-                        owned by Deployment
-                      properties:
-                        deletiontimestamp:
-                          format: date-time
-                          type: string
-                        image:
-                          type: string
-                        name:
-                          type: string
-                        phase:
-                          description: PodPhase is a label for the condition of a
-                            pod at the current time.
-                          type: string
-                      type: object
-                    type: array
-                  running_pod_num:
-                    type: integer
-                type: object
               phase:
                 type: string
-              spec_pod_list:
-                description: DeployPodList records the DeployPod with the same image.
-                  The pods are divided into running pod, pending pod and delete pod
-                properties:
-                  deleted_pod_list:
-                    items:
-                      description: DeployPod records necessary metadata of the pod
-                        owned by Deployment
-                      properties:
-                        deletiontimestamp:
-                          format: date-time
-                          type: string
-                        image:
-                          type: string
-                        name:
-                          type: string
-                        phase:
-                          description: PodPhase is a label for the condition of a
-                            pod at the current time.
-                          type: string
-                      type: object
-                    type: array
-                  deleted_pod_num:
-                    type: integer
-                  pending_pod_list:
-                    items:
-                      description: DeployPod records necessary metadata of the pod
-                        owned by Deployment
-                      properties:
-                        deletiontimestamp:
-                          format: date-time
-                          type: string
-                        image:
-                          type: string
-                        name:
-                          type: string
-                        phase:
-                          description: PodPhase is a label for the condition of a
-                            pod at the current time.
-                          type: string
-                      type: object
-                    type: array
-                  pending_pod_num:
-                    type: integer
-                  running_pod_list:
-                    items:
-                      description: DeployPod records necessary metadata of the pod
-                        owned by Deployment
-                      properties:
-                        deletiontimestamp:
-                          format: date-time
-                          type: string
-                        image:
-                          type: string
-                        name:
-                          type: string
-                        phase:
-                          description: PodPhase is a label for the condition of a
-                            pod at the current time.
-                          type: string
-                      type: object
-                    type: array
-                  running_pod_num:
-                    type: integer
-                type: object
+              pod_list:
+                items:
+                  description: SimplePod records simple information of the pod
+                  properties:
+                    deletiontimestamp:
+                      format: date-time
+                      type: string
+                    image:
+                      type: string
+                    name:
+                      type: string
+                    phase:
+                      description: PodPhase is a label for the condition of a pod
+                        at the current time.
+                      type: string
+                  type: object
+                type: array
             type: object
         type: object
     served: true
