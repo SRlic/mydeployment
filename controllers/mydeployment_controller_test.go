@@ -221,10 +221,10 @@ func checkDeploymentStatus(ctx context.Context, deployment *mydeployment.MyDeplo
 		}
 		for i := range podList.Items {
 			if podList.Items[i].Status.Phase == corev1.PodPending {
-				return deployment.Status.Phase == mydeployment.DeployScaling
+				return deployment.Status.Phase == mydeployment.DeploymentScaling
 			}
 		}
-		return deployment.Status.Phase == mydeployment.DepolyRuning
+		return deployment.Status.Phase == mydeployment.DeploymentRuning
 	}, timeout, interval).Should(BeTrue())
 }
 

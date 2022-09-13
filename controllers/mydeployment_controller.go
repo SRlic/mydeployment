@@ -88,40 +88,33 @@ func (r *MyDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// Divide the pods into spec pods and expired pods according to the container image.
 	// Get the spec pod num and expired pod num.
-	// We will determine where to upgrade or scale based on specPodNum, expiredPodNum and instance.Spec.Replica
 	specPodNum, expiredPodNum := r.getPodStatistics(podList, instance)
+
+	// calculate current status based on specPodNum, expiredPodNum and mydeployment.spec.replica
+	currentStatus := r.calculateStatusPhase(podList, instance, specPodNum, expiredPodNum)
+
 	// Process upgrading or scaling
-	// priority: upgrade > scale
-	if expiredPodNum != 0 {
-		// There are expired pods, we need upgrade our pods
+	switch currentStatus {
+	case mydeployment.DeploymentUpgrating:
 		err := r.ProcessUpgrade(ctx, podList, instance)
 		if err != nil {
 			logr.Error(err, "pod upgrade error")
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
-
-	} else if specPodNum != instance.Spec.Replica {
-		// Pod num is not equal with spec replica, we need scale our pods
+	case mydeployment.DeploymentScaling:
 		err := r.ProcessScale(ctx, podList, instance, specPodNum)
 		if err != nil {
 			logr.Error(err, "pod scale error")
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
-	} else {
-		// Desired state has been reached, maybe some pods are pending
-		if r.getPendingPodNum(podList) > 0 {
-			err := r.updateDeploymentStatus(ctx, instance, mydeployment.DeployScaling, podList)
-			if err != nil {
-				logr.Error(err, "update deployment status error")
-				return ctrl.Result{}, err
-			}
-		} else {
-			err := r.updateDeploymentStatus(ctx, instance, mydeployment.DepolyRuning, podList)
-			if err != nil {
-				logr.Error(err, "update deployment status error")
-				return ctrl.Result{}, err
-			}
-		}
+	default:
+		// do nothing
+	}
+
+	err = r.updateDeploymentStatus(ctx, instance, currentStatus, podList)
+	if err != nil {
+		logr.Error(err, "update deployment status error")
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
@@ -133,13 +126,6 @@ func (r *MyDeploymentReconciler) ProcessScale(ctx context.Context, podList *core
 	defer func() {
 		logr.Info("Scaling process end")
 	}()
-
-	// update deployment status
-	err := r.updateDeploymentStatus(ctx, myDeployment, mydeployment.DeployScaling, podList)
-	if err != nil {
-		logr.Error(err, "update deployment status error")
-		return err
-	}
 
 	if specPodNum > myDeployment.Spec.Replica {
 		// scale down
@@ -166,12 +152,6 @@ func (r *MyDeploymentReconciler) ProcessUpgrade(ctx context.Context, podList *co
 	defer func() {
 		logr.Info("Upgrading process end")
 	}()
-
-	err := r.updateDeploymentStatus(ctx, myDeployment, mydeployment.DepolyUpgrating, podList)
-	if err != nil {
-		logr.Error(err, "update deployment status error")
-		return err
-	}
 
 	// waiting for the pending spec pod
 	if r.NeedWaitForPendingSpecPod(podList, myDeployment.Spec.Image) {
@@ -374,6 +354,21 @@ func (r *MyDeploymentReconciler) updateDeploymentStatus(ctx context.Context, myD
 		return err
 	}
 	return nil
+}
+
+func (r *MyDeploymentReconciler) calculateStatusPhase(podList *corev1.PodList, myDeployment *mydeployment.MyDeployment, specPodNum, expiredPodNum int) string {
+	if expiredPodNum != 0 {
+		return mydeployment.DeploymentUpgrating
+	}
+
+	if specPodNum != myDeployment.Spec.Replica {
+		return mydeployment.DeploymentScaling
+	}
+	if r.getPendingPodNum(podList) > 0 {
+		return mydeployment.DeploymentScaling
+	}
+
+	return mydeployment.DeploymentRuning
 }
 
 // SetupWithManager sets up the controller with the Manager.

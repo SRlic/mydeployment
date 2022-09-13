@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	DeployScaling   string = "Scaling"
-	DepolyRuning    string = "Runing"
-	DepolyUpgrating string = "Upgrading"
+	DeploymentScaling   string = "Scaling"
+	DeploymentRuning    string = "Runing"
+	DeploymentUpgrating string = "Upgrading"
 )
 
 // SimplePod records simple information of the pod
