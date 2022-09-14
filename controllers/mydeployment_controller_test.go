@@ -81,6 +81,7 @@ var _ = Describe("BackupExecution Controller", func() {
 			managerStop()
 			wg.Wait()
 		})
+
 		It("Should create pods described by image and replica in deployment", func() {
 			const (
 				deploymentName = "mydeployment-test1"
@@ -104,24 +105,6 @@ var _ = Describe("BackupExecution Controller", func() {
 			Expect(k8sClient.Create(ctx, deployment)).Should(Succeed())
 			By("By checking pod has been created ")
 			checkPodCreatedByDeployment(ctx, deployment)
-			// By("By checking Deployment status")
-			// podList := &corev1.PodList{}
-			// Eventually(func() bool {
-			// 	err := k8sClient.Get(ctx, types.NamespacedName{Namespace: testNamespace, Name: deploymentName}, deployment)
-			// 	if err != nil {
-			// 		return false
-			// 	}
-			// 	err = k8sClient.List(ctx, podList, client.InNamespace(testNamespace), client.MatchingLabels{"app": deployment.Name})
-			// 	if err != nil {
-			// 		return false
-			// 	}
-			// 	for i := range podList.Items {
-			// 		if podList.Items[i].Status.Phase == corev1.PodPending {
-			// 			return deployment.Status.Phase == mydeployment.DeployScaling
-			// 		}
-			// 	}
-			// 	return deployment.Status.Phase == mydeployment.DepolyRuning
-			// }, timeout, interval).Should(BeTrue())
 		})
 		It("Should scale pods", func() {
 			const (
