@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"reflect"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -55,13 +56,16 @@ var (
 func (r *MyDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	podList := &corev1.PodList{}
 	instance := &mydeployment.MyDeployment{}
-	logr.Info("Reconcile start =====================")
+	logr.Info("Reconcile start")
+	defer func() {
+		logr.Info("Reconcile end")
+	}()
 
-	// 1. Get deployment, list pods owned by this deployment
+	// Get deployment, list pods owned by this deployment
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logr.Info("Deployment has been deleted")
+			logr.Info("Deployment not found")
 			return ctrl.Result{}, nil
 		}
 		logr.Error(err, "Get Deployment failed")
@@ -72,14 +76,14 @@ func (r *MyDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	err = r.List(ctx, podList, client.InNamespace(req.Namespace), client.MatchingLabels{"app": instance.Name})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logr.Info("All pods has been deleted")
+			logr.Info(fmt.Sprintf("Pods owns by deployment %v not found", instance.Name))
 			return ctrl.Result{}, nil
 		}
 		logr.Error(err, "List pod failed")
 		return ctrl.Result{}, err
 	}
 
-	// 2.Initialize the StatusPodList.
+	// Initialize the StatusPodList.
 	// In StatusPodList, pods are divided into two categories: specpod and otherpod,
 	// which are inserted into specpodlist and otherpodlist respectively
 	statusPodList, err := utils.NewStatusPodList(podList, instance.Spec.Image)
@@ -88,67 +92,67 @@ func (r *MyDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	// 3. Core part，process pod scaling or updating
-	// If the num of other pods is 0，process pod scaling up or down
-	// else process pod updating
-	if statusPodList.CurrentOtherReplica == 0 {
+	// Core part，process pod scaling or updating
+	// Priority: Upgrade > scale
+	if statusPodList.NeedUpgrade() {
+		udpateErr := r.UpgradePod(ctx, statusPodList, instance)
+		if udpateErr != nil {
+			logr.Error(udpateErr, "update pod error ")
+			return ctrl.Result{}, err
+		}
+	} else if statusPodList.NeedScale(instance.Spec.Replica) {
 		scaleErr := r.ScalePod(ctx, statusPodList, instance)
 		if scaleErr != nil {
 			logr.Error(scaleErr, "scale pod error ")
 			return ctrl.Result{}, err
 		}
-	} else {
-		udpateErr := r.UpdatePod(ctx, statusPodList, instance)
-		if udpateErr != nil {
-			logr.Error(udpateErr, "update pod error ")
-			return ctrl.Result{}, err
-		}
 	}
-
-	// 4. Update deployment status
+	// Update deployment status
 	err = r.UpdateDeploymentStatus(ctx, statusPodList, instance)
 	if err != nil {
 		logr.Error(err, "Update deployment status failed ")
 		return ctrl.Result{}, err
 	}
 
-	defer func() {
-		logr.Info("=====================  Reconcile end")
-	}()
 	return ctrl.Result{}, nil
 }
 
-// Convert StatusPodList into DeploymentStatus, get current deployemnt status phase and update the status subresource of current mydeployment
+// UpdateDeploymentStatus Convert StatusPodList into DeploymentStatus, get current deployemnt status phase and update the status subresource of current mydeployment
 func (r *MyDeploymentReconciler) UpdateDeploymentStatus(ctx context.Context, statusPodList *utils.StatusPodList, myDeployment *mydeployment.MyDeployment) error {
-	myDeployment.Status = *statusPodList.ToDeploymentStatus()
-	logr.Info(fmt.Sprintf("myDeployment Status %v", myDeployment.Status))
+	status := *statusPodList.ToDeploymentStatus()
+	logr.Info(fmt.Sprintf("myDeployment Status %v", status))
 
-	myDeployment.Status.UpdateStatusPhase(&myDeployment.Spec)
-	logr.Info(fmt.Sprintf("My Depolyment state %v", myDeployment.Status.Phase))
+	status.UpdateStatusPhase(&myDeployment.Spec)
+	logr.Info(fmt.Sprintf("My Depolyment state %v", status.Phase))
 
-	err := r.Status().Update(ctx, myDeployment)
-	if err != nil {
-		return err
+	if !reflect.DeepEqual(myDeployment.Status, status) {
+		myDeployment.Status = status
+		err := r.Status().Update(ctx, myDeployment)
+		if err != nil {
+			logr.Error(err, "Failed to update myDeployment status")
+			return err
+		}
 	}
+
 	return nil
 }
 
-// UpdatePod handles the pod updating process
-func (r *MyDeploymentReconciler) UpdatePod(ctx context.Context, statusPodList *utils.StatusPodList, myDeployment *mydeployment.MyDeployment) error {
+// UpgradePod handles the pod updating process
+func (r *MyDeploymentReconciler) UpgradePod(ctx context.Context, statusPodList *utils.StatusPodList, myDeployment *mydeployment.MyDeployment) error {
 	logr.Info("Update pod start")
 	defer func() {
 		logr.Info("Update pod end")
 	}()
 	// Wait for pending spec pods
-	if statusPodList.SpecPodList.PendingReplica > 0 {
+	if statusPodList.SpecPodPending() {
 		logr.Info("Waiting for some pending specPods")
 		return nil
 	}
 
 	// If there are pending other pods, delete them directly
-	if statusPodList.OtherPodList.PendingReplica > 0 {
+	if statusPodList.ExpiredPodPending() {
 		logr.Info("Delete pending otherPods")
-		err := r.BatchDeletePod(ctx, statusPodList.OtherPodList, statusPodList.OtherPodList.PendingReplica)
+		err := r.BatchDeletePod(ctx, statusPodList.ExpiredPodList, statusPodList.ExpiredPodList.PendingPodNum)
 		if err != nil {
 			logr.Error(err, "Batch delete pod error ")
 			return err
@@ -157,17 +161,17 @@ func (r *MyDeploymentReconciler) UpdatePod(ctx context.Context, statusPodList *u
 	}
 
 	// No pending pod, roll update pod
-	return r.RollUpdatePod(ctx, statusPodList, myDeployment)
+	return r.RollUpgradePod(ctx, statusPodList, myDeployment)
 }
 
-// RollUpdatePod handles the pod roll updating, the rolling update granularity is set to 1 here
-func (r *MyDeploymentReconciler) RollUpdatePod(ctx context.Context, statusPodList *utils.StatusPodList, myDeployment *mydeployment.MyDeployment) error {
+// RollUpgradePod handles the pod roll updating, the rolling update granularity is set to 1 here
+func (r *MyDeploymentReconciler) RollUpgradePod(ctx context.Context, statusPodList *utils.StatusPodList, myDeployment *mydeployment.MyDeployment) error {
 	logr.Info("Roll update pod")
-	logr.Info(fmt.Sprintf("spec running replica %v, other running replica %v", statusPodList.SpecPodList.RunningReplica, statusPodList.OtherPodList.RunningReplica))
-	runningReplica := statusPodList.SpecPodList.RunningReplica + statusPodList.OtherPodList.RunningReplica
+	logr.Info(fmt.Sprintf("running spec pod number %v, running expired pod number %v", statusPodList.SpecPodList.RunningPodNum, statusPodList.ExpiredPodList.RunningPodNum))
+	runningPodNum := statusPodList.SpecPodList.RunningPodNum + statusPodList.ExpiredPodList.RunningPodNum
 
-	if runningReplica > myDeployment.Spec.Replica {
-		err := r.BatchDeletePod(ctx, statusPodList.OtherPodList, utils.BATCHUPDATESIZE)
+	if runningPodNum > myDeployment.Spec.Replica {
+		err := r.BatchDeletePod(ctx, statusPodList.ExpiredPodList, utils.BATCHUPDATESIZE)
 		if err != nil {
 			logr.Error(err, "Batch delete other pod error ")
 			return err
@@ -190,32 +194,30 @@ func (r *MyDeploymentReconciler) ScalePod(ctx context.Context, statusPodList *ut
 	}()
 
 	specReplica := myDeployment.Spec.Replica
-	currentReplica := statusPodList.CurrentSpecReplica
+	alivePodNum := statusPodList.AlivePodNum
 
-	if specReplica > currentReplica {
+	if specReplica > alivePodNum {
 		// Spec replica is larger than current replica, scale up
-		createNum := specReplica - currentReplica
+		createNum := specReplica - alivePodNum
 		err := r.BatchCreatePod(ctx, myDeployment, createNum)
 		if err != nil {
 			logr.Error(err, "Batch create pod error")
 			return err
 		}
-	} else if specReplica < currentReplica {
+	} else {
 		// Spec replica is less than current replica, scale down
-		deleteNum := myDeployment.Status.CurrentSpecReplica - myDeployment.Spec.Replica
+		deleteNum := alivePodNum - specReplica
 		err := r.BatchDeletePod(ctx, statusPodList.SpecPodList, deleteNum)
 		if err != nil {
 			logr.Error(err, "Batch delete pod error ")
 			return err
 		}
-	} else {
-		// Spec replica is equal with current replica, do nothing
 	}
 
 	return nil
 }
 
-// Batch Create Pod
+// BatchCreatePod Batch Create Pod
 func (r *MyDeploymentReconciler) BatchCreatePod(ctx context.Context, myDeployment *mydeployment.MyDeployment, size int) error {
 	logr.Info(fmt.Sprintf("create pod num: %v, image:%v", size, myDeployment.Spec.Image))
 	rand.Seed(time.Now().Unix())
@@ -254,14 +256,14 @@ func (r *MyDeploymentReconciler) BatchCreatePod(ctx context.Context, myDeploymen
 	return nil
 }
 
-// Delete pod from my pod list, pending pods will be deleted first
+// BatchDeletePod Delete pod from my pod list, pending pods will be deleted first
 func (r *MyDeploymentReconciler) BatchDeletePod(ctx context.Context, podList *utils.MyPodList, deleteNum int) error {
 	logr.Info(fmt.Sprintf("delete pod num: %v, ", deleteNum))
-	pendingLen := podList.PendingReplica
-	runningLen := podList.RunningReplica
+	pendingNum := podList.PendingPodNum
+	runningNum := podList.RunningPodNum
 	//Delete pending pod first
 	i := 0
-	for i = 0; i < deleteNum && i < pendingLen; i++ {
+	for i = 0; i < deleteNum && i < pendingNum; i++ {
 		logr.Info(fmt.Sprintf("delete pod : %v, ", podList.PendingPods[i].Name))
 		if err := r.Delete(ctx, podList.PendingPods[i]); err != nil {
 			if errors.IsNotFound(err) {
@@ -275,7 +277,7 @@ func (r *MyDeploymentReconciler) BatchDeletePod(ctx context.Context, podList *ut
 	}
 	deleteNum = deleteNum - i
 	//Delete runing pod then
-	for i = 0; i < deleteNum && i < runningLen; i++ {
+	for i = 0; i < deleteNum && i < runningNum; i++ {
 		logr.Info(fmt.Sprintf("delete pod : %v, ", podList.RunningPods[i].Name))
 		if err := r.Delete(ctx, podList.RunningPods[i]); err != nil {
 			if errors.IsNotFound(err) {

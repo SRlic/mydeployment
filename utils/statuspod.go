@@ -13,14 +13,14 @@ import (
 // MyPodList record pods with the same image,
 // pods are divided into running pod, pending pod and delete pod
 type MyPodList struct {
-	Replica        int `json:"replica,omitempty"`
-	RunningReplica int `json:"running_replica,omitempty"`
-	PendingReplica int `json:"pedding_replica,omitempty"`
-	DeleteReplica  int `json:"delete_replica,omitempty"`
+	AlivePodNum   int `json:"replica,omitempty"`
+	RunningPodNum int `json:"running_replica,omitempty"`
+	PendingPodNum int `json:"pedding_replica,omitempty"`
+	DeletedPodNum int `json:"delete_replica,omitempty"`
 
 	RunningPods []*corev1.Pod `json:"running_pod,omitempty"`
 	PendingPods []*corev1.Pod `json:"pending_pod,omitempty"`
-	DeletePods  []*corev1.Pod `json:"delete_pod,omitempty"`
+	DeletedPods []*corev1.Pod `json:"delete_pod,omitempty"`
 }
 
 // NewMyPodList init a new MyPodList
@@ -28,18 +28,18 @@ func NewMyPodList() *MyPodList {
 	return &MyPodList{
 		RunningPods: make([]*corev1.Pod, 0),
 		PendingPods: make([]*corev1.Pod, 0),
-		DeletePods:  make([]*corev1.Pod, 0),
+		DeletedPods: make([]*corev1.Pod, 0),
 	}
 }
 
 // ToDeployPodList  MyPodList to DeployPodList
 func (m *MyPodList) ToDeployPodList() *mydeployment.DeployPodList {
-	deletePod := make([]*mydeployment.DeployPod, 0)
+	deletedPod := make([]*mydeployment.DeployPod, 0)
 	runningPod := make([]*mydeployment.DeployPod, 0)
 	pendingPod := make([]*mydeployment.DeployPod, 0)
 
-	for i := range m.DeletePods {
-		deletePod = append(deletePod, mydeployment.NewDeployPod(m.DeletePods[i]))
+	for i := range m.DeletedPods {
+		deletedPod = append(deletedPod, mydeployment.NewDeployPod(m.DeletedPods[i]))
 	}
 	for i := range m.RunningPods {
 		runningPod = append(runningPod, mydeployment.NewDeployPod(m.RunningPods[i]))
@@ -48,12 +48,12 @@ func (m *MyPodList) ToDeployPodList() *mydeployment.DeployPodList {
 		pendingPod = append(pendingPod, mydeployment.NewDeployPod(m.PendingPods[i]))
 	}
 	return &mydeployment.DeployPodList{
-		RunningReplica: m.RunningReplica,
-		RunningPod:     runningPod,
-		PendingReplica: m.PendingReplica,
-		PendingPod:     pendingPod,
-		DeleteReplica:  m.DeleteReplica,
-		DeletePod:      deletePod,
+		RunningPodNum:  m.RunningPodNum,
+		RunningPodList: runningPod,
+		PendingPodNum:  m.PendingPodNum,
+		PendingPodList: pendingPod,
+		DeletedPodNum:  m.DeletedPodNum,
+		DeletedPodList: deletedPod,
 	}
 }
 
@@ -63,20 +63,20 @@ func (m *MyPodList) ToDeployPodList() *mydeployment.DeployPodList {
 // If the status phase in pod is running append it into RunningPods
 func (m *MyPodList) AppendToMyPodList(pod *corev1.Pod) error {
 	if !pod.DeletionTimestamp.IsZero() {
-		m.DeletePods = append(m.DeletePods, pod)
-		m.DeleteReplica++
+		m.DeletedPods = append(m.DeletedPods, pod)
+		m.DeletedPodNum++
 		return nil
 	}
-	m.Replica++
+	m.AlivePodNum++
 
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		m.RunningPods = append(m.RunningPods, pod)
-		m.RunningReplica++
+		m.RunningPodNum++
 		return nil
 	case corev1.PodPending:
 		m.PendingPods = append(m.PendingPods, pod)
-		m.PendingReplica++
+		m.PendingPodNum++
 		return nil
 	default:
 		return errors.New("bad pod status")
@@ -86,23 +86,57 @@ func (m *MyPodList) AppendToMyPodList(pod *corev1.Pod) error {
 // StatusPodList record the pod owned by current deployment
 // We process pod scaling or updating based on StatusPodList
 type StatusPodList struct {
-	CurrentSpecReplica int        `json:"current_spec_replica,omitempty"`
-	SpecPodList        *MyPodList `json:"spec_pod,omitempty"`
+	AlivePodNum int `json:"alive_pod_num,omitempty"`
 
-	// current other replica= OtherPod.RunningReplica + OtherPod.PendingReplica
-	CurrentOtherReplica int        `json:"current_other_replica,omitempty"`
-	OtherPodList        *MyPodList `json:"other_pod,omitempty"`
+	AliveSpecPodNum int        `json:"alive_spec_pod_num,omitempty"`
+	SpecPodList     *MyPodList `json:"spec_pod,omitempty"`
+
+	// current other replica= OtherPod.RunningPodNum + OtherPod.PendingPodNum
+	AliveExpiredPodNum int        `json:"current_other_replica,omitempty"`
+	ExpiredPodList     *MyPodList `json:"other_pod,omitempty"`
 }
 
-// ToDeploymentStatus  StatusPodList to DeploymentStatus
+// ToDeploymentStatus convert StatusPodList to DeploymentStatus
 func (s *StatusPodList) ToDeploymentStatus() *mydeployment.MyDeploymentStatus {
 	return &mydeployment.MyDeploymentStatus{
-		CurrentReplica:      s.CurrentSpecReplica + s.CurrentOtherReplica,
-		CurrentSpecReplica:  s.CurrentSpecReplica,
-		CurrentOtherReplica: s.CurrentOtherReplica,
-		SpecPod:             s.SpecPodList.ToDeployPodList(),
-		OtherPod:            s.OtherPodList.ToDeployPodList(),
+		AlivePodNum:        s.AlivePodNum,
+		AliveSpecPodNum:    s.AliveSpecPodNum,
+		AliveExpiredPodNum: s.AliveExpiredPodNum,
+		SpecPodList:        s.SpecPodList.ToDeployPodList(),
+		ExpiredPodList:     s.ExpiredPodList.ToDeployPodList(),
 	}
+}
+
+// NeedScale is used to determine whether we need scale current pod list. If alivePodNum != sepcReplica, we need scale the pod list.
+func (s *StatusPodList) NeedScale(specReplica int) bool {
+	if s.AlivePodNum == specReplica {
+		return false
+	}
+	return true
+}
+
+// NeedUpgrade is used to determine whether we need upgrade current pod list.
+func (s *StatusPodList) NeedUpgrade() bool {
+	if s.AliveExpiredPodNum > 0 {
+		return true
+	}
+	return false
+}
+
+// SpecPodPending is used to determine whether we have the pending spec pods.
+func (s *StatusPodList) SpecPodPending() bool {
+	if s.SpecPodList.PendingPodNum > 0 {
+		return true
+	}
+	return false
+}
+
+// ExpiredPodPending is used to determine whether we have the pending expired pods.
+func (s *StatusPodList) ExpiredPodPending() bool {
+	if s.ExpiredPodList.PendingPodNum > 0 {
+		return true
+	}
+	return false
 }
 
 // NewStatusPodList initialize a new StatusPodList
@@ -111,7 +145,7 @@ func (s *StatusPodList) ToDeploymentStatus() *mydeployment.MyDeploymentStatus {
 func NewStatusPodList(podList *corev1.PodList, specImage string) (*StatusPodList, error) {
 	logr := log.Log.WithName("myDeployment")
 	specPodList := NewMyPodList()
-	otherPodList := NewMyPodList()
+	expiredPodList := NewMyPodList()
 
 	for i := range podList.Items {
 		switch image := GetImageStrFromPod(&podList.Items[i]); image {
@@ -122,7 +156,7 @@ func NewStatusPodList(podList *corev1.PodList, specImage string) (*StatusPodList
 				return nil, err
 			}
 		default:
-			err := otherPodList.AppendToMyPodList(&podList.Items[i])
+			err := expiredPodList.AppendToMyPodList(&podList.Items[i])
 			if err != nil {
 				logr.Error(err, fmt.Sprintf("Init myDeployment error at ClassifyToPodList pod :%v", podList.Items[i]))
 				return nil, err
@@ -131,9 +165,10 @@ func NewStatusPodList(podList *corev1.PodList, specImage string) (*StatusPodList
 	}
 
 	return &StatusPodList{
-		SpecPodList:         specPodList,
-		CurrentSpecReplica:  specPodList.Replica,
-		OtherPodList:        otherPodList,
-		CurrentOtherReplica: otherPodList.Replica,
+		AlivePodNum:        specPodList.AlivePodNum + expiredPodList.AlivePodNum,
+		SpecPodList:        specPodList,
+		AliveSpecPodNum:    specPodList.AlivePodNum,
+		ExpiredPodList:     expiredPodList,
+		AliveExpiredPodNum: expiredPodList.AlivePodNum,
 	}, nil
 }
